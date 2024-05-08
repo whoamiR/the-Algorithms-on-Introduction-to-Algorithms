@@ -1,22 +1,22 @@
 /* Create time: 2024.4.30 by whoami. */
 #include <stdio.h>
 #include <stdlib.h>
-typedef struct avl_node
+typedef struct avl_tree
 {
 	/* NEW ATTRIBUTE: height. */
 	int key,height;
-	struct avl_node *left,*right,*p;
-}avl_node;
+	struct avl_tree *left,*right,*p;
+}avl_tree;
 typedef struct Tree_root
 {
-	avl_node *root,nil;
+	avl_tree *root,nil;
 }Tree_root;
 int max(int x,int y){return x>y?x:y;}
-void update(avl_node *x){x->height=max(x->left->height,x->right->height)+1;}
+void update(avl_tree *x){x->height=max(x->left->height,x->right->height)+1;}
 /* Same left and right rotate as R&B Tree */
-avl_node *left_rotate(Tree_root *H,avl_node *x)
+avl_tree *left_rotate(Tree_root *H,avl_tree *x)
 {
-	avl_node *y=x->right,*z=&H->nil;
+	avl_tree *y=x->right,*z=&H->nil;
 	x->right=y->left;
 	if(y->left!=z) y->left->p=x;
 	y->p=x->p;
@@ -29,9 +29,9 @@ avl_node *left_rotate(Tree_root *H,avl_node *x)
 	update(y);
 	return y;
 }
-avl_node *right_rotate(Tree_root *H,avl_node *x)
+avl_tree *right_rotate(Tree_root *H,avl_tree *x)
 {
-	avl_node *y=x->left,*z=&H->nil;
+	avl_tree *y=x->left,*z=&H->nil;
 	x->left=y->right;
 	if(y->right!=z) y->right->p=x;
 	y->p=x->p;
@@ -89,96 +89,103 @@ avl_node *right_rotate(Tree_root *H,avl_node *x)
  *          /                                          \  |
  *         (p)                                        (q) |
  *________________________________________________________| */
-void balance(Tree_root *H,avl_node *x)
+avl_tree *balance(Tree_root *H,avl_tree *x)
 {
-	avl_node *y=x,*z=&H->nil;
-	while(y!=z){
-		int bf=y->left->height-y->right->height;
-		printf("bf=%d\n",bf);
-		/* condition one and three. */
-		if(bf > 1){
-			int child_bf=y->left->left->height-y->left->right->height;
-			if(child_bf>=0) y=right_rotate(H,y);
-			else{
-				y->left=left_rotate(H,y->left);
-				y=right_rotate(H,y);
-			}
-		}else if(bf < -1){
-			int child_bf=y->right->left->height-y->right->right->height;
-			if(child_bf<=0) y=left_rotate(H,y);
-			else{
-				y->right=right_rotate(H,y->left);
-				y=left_rotate(H,y);
-			}
-		}else y=y->p;
+	int bf=x->left->height-x->right->height;
+	printf("bf=%d\n",bf);
+	/* condition one and three. */
+	if(bf > 1){
+		int child_bf=x->left->left->height-x->left->right->height;
+		if(child_bf>=0) x=right_rotate(H,x);
+		else{
+			x->left=left_rotate(H,x->left);
+			x=right_rotate(H,x);
+		}
+	}else if(bf < -1){
+		int child_bf=x->right->left->height-x->right->right->height;
+		if(child_bf<=0) x=left_rotate(H,x);
+		else{
+			x->right=right_rotate(H,x->left);
+			x=left_rotate(H,x);
+		}
+	}
+	return x;
+}
+avl_tree *insert(Tree_root *H,avl_tree *x,int y)
+{
+	avl_tree *z=&H->nil;
+	/* insert new node. */
+	if(x==z){
+		x=(avl_tree *)malloc(sizeof(avl_tree));
+		x->p=x->left=x->right=z;
+		x->key=y;
+		x->height=1;		
+	}else{
+		if(x->key<y){
+			x->right=insert(H,x->right,y);
+			x->right->p=x;
+		}else{
+			x->left=insert(H,x->left,y);
+			x->left->p=x;
+		}
+		update(x);
+		x=balance(H,x);
+	}
+	return x;
+}
+void build(Tree_root *H)
+{
+	int key;
+	avl_tree *x=&H->nil;
+	for(;;){
+		if(!scanf("%d",&key)) break;
+		H->root=insert(H,H->root,key);
 	}
 }
-void insert(Tree_root *H,avl_node *x)
+avl_tree *find_min(Tree_root *H,avl_tree *x)
 {
-	avl_node *y=H->root,*z=&H->nil,*q;
-	while(y!=z){
-		q=y;
-		if(x->key>y->key) y=y->right;
-		else y=y->left;
-	}
-	x->p=q;
-	if(x->key>q->key) q->right=x;
-	else q->left=x;
-	for(avl_node *n=q;n!=z;n=n->p) update(n);
-	balance(H,q);
-}
-avl_node *find_min(Tree_root *H,avl_node *x)
-{
-	avl_node *y=&H->nil;
+	avl_tree *y=&H->nil;
 	while(x->left!=y) x=x->left;
 	return x;
 }
-void transplant(Tree_root *H,avl_node *x,avl_node *y)
+void transplant(Tree_root *H,avl_tree *x,avl_tree *y)
 {
-	avl_node *q=&H->nil;
+	avl_tree *q=&H->nil;
 	if(x->p==q) H->root=y;
 	else if(x==x->p->left) x->p->left=y;
 	else x->p->right=y;
 	y->p=x->p;
 	return;
 }
-void delete(Tree_root *H,avl_node *x)
+avl_tree *delete(Tree_root *H,avl_tree *x,avl_tree *y)
 {
-	avl_node *y=H->root,*z=&H->nil,*q;
-	if(x->left==z)
-		transplant(H,x,x->right);
-	else if(x->right==z)
-		transplant(H,x,x->left);
-	else{
-		q=find_min(H,x->right);
-		if(q->p=x){
-			transplant(H,q,q->right);
-			q->right=x->right;
-			x->right->p=q;
+	avl_tree *z=&H->nil,*q=x;
+	if(x->key>y->key){
+		x->left=delete(H,x->left,y);
+		x->left->p=x;
+	}else if(x->key<y->key){
+		x->right=delete(H,x->right,y);
+		x->right->p=x;
+	}else{
+		/* Find it! */
+		if(x->left==z){
+			transplant(H,x,x->right);
+			q=x->right;
+		}else if(x->right==z){
+			transplant(H,x,x->left);
+			q=x->left;
+		}else{
+			q=find_min(H,x->right);
+			if(q->p!=x){
+				transplant(H,q,q->right);
+				q->right=x->right;
+				x->right->p=q;
+			}
+			transplant(H,x,q);
+			q->left=x->left;
+			x->left->p=q;
 		}
-		transplant(H,x,q);
-		q->left=x->left;
-		x->left->p=q;
 	}
-	for(avl_node *n=q->p;n!=z;n=n->p) update(n);
-	balance(H,q->p);
-}
-void build(Tree_root *H)
-{
-	avl_node *x=&H->nil,*y;
-	for(;;){
-		y=(avl_node *)malloc(sizeof(avl_node));
-		if(!scanf("%d",&y->key)) break;
-		y->left=y->right=y->p=&H->nil;
-		y->height=1;
-		if(H->root==x) H->root=y;
-		else insert(H,y);	
-	}
-}
-int main()
-{
-	Tree_root H;
-	H.root=&H.nil;
-	build(&H);
-	printf("%d\n",H.root->key);
+	q=balance(H,q);
+	return q;	
 }
