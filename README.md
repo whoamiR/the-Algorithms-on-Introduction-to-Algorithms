@@ -15,3 +15,5 @@ All codes were tested in Linux.So I'm not sure if it can works in Windows.(Usual
 
 
 2024.5.1 update avl Tree
+
+2024.5.20 update Hash Table
